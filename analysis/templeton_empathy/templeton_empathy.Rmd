@@ -14,7 +14,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Set up workspace and run correlation
 
 ``` {r}
-
 # install.packages("tidyverse", "corrplot", "ggcorrplot", "lme4", "mediation", "here", "reshape2")
 require(tidyverse)
 require(sjstats)
@@ -27,7 +26,28 @@ require(reshape2)
 # Clear workspace
 rm(list=ls())
 
-empathy_data <- read.csv(here::here("templeton_empathy_clean_data.csv"))
+# Read in data
+empathy_data <- as_tibble(read.csv(here("templeton_clean_data.csv")))
+# Recode gender
+empathy_data <- empathy_data %>% mutate (gender = recode(gender, f = "female", m = "male"))
+
+# Correct data types to factors
+empathy_data$unique_id= as.factor(empathy_data$unique_id)
+empathy_data$country= as.factor(empathy_data$country)
+empathy_data$gender= as.factor(empathy_data$gender)
+
+# Calculate mean empathy score
+empathy_data <- empathy_data %>% 
+    rowwise() %>% 
+    mutate(mean_empathy=mean(c(empathy_pain_resp,empathy_sorry_resp)))
+
+# Mean center the composite
+empathy_data <- empathy_data %>% mutate(mean_empathy_c = mean_empathy - mean(empathy_data$mean_empathy, na.rm = TRUE)) # mean_empathy_c is centered
+
+
+
+# Select only children ages 6 - 10
+empathy_data <- empathy_data %>% filter(age_years > 5 & age_years < 11)
 
 # Helper function to calculate the mean and the standard deviation for each group ####
 # Created by http://www.sthda.com/english/wiki/ggplot2-line-plot-quick-start-guide-r-software-and-data-visualization
@@ -56,6 +76,11 @@ data_summary <- function(data, varname, groupnames){
 empathy_data %>%
   group_by(age_years, country, gender) %>%
   dplyr::summarise(n = n())
+
+
+cor.test(empathy_data$parent_qcae_tot, empathy_data$child_qcae_tot, na.rm=TRUE)
+cor.test(empathy_data$parent_qcae_tot, empathy_data$empathy_pain_resp_c, na.rm=TRUE)
+cor.test(empathy_data$child_qcae_tot, empathy_data$empathy_pain_resp_c, na.rm=TRUE)
 
 # Check if empathy behaviors correlate for each country
 cor.test(filter(empathy_data, country=="canada" & age_years == 6)$empathy_pain_resp_c, filter(empathy_data, country=="canada" & age_years == 6)$empathy_sorry_resp_c, use="complete.obs")
@@ -105,9 +130,64 @@ empathy_data %>%
   geom_smooth() +
   geom_point()+
   scale_color_brewer(palette="Paired")+theme_minimal() +
-  xlab("Cognitive Empathy Score") + ylab("Empathic Concern Score") +
+  xlab("Pain Sensitivity Score") + ylab("Empathic Concern Score") +
   labs(colour = "Country") +
   facet_wrap(~country) +
+  theme(plot.title = element_text(color = "grey20", size = 20, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+        axis.text.x = element_text(color = "grey20", size = 16, angle = 90, hjust = .5, vjust = .5, face = "plain"),
+        axis.text.y = element_text(color = "grey20", size = 16, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+        axis.title.x = element_text(color = "grey20", size = 20, angle = 0, hjust = .5, vjust = 0, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 20, angle = 90, hjust = .5, vjust = .5, face = "plain"))
+
+# Are parent cognitive and affective empathy correlated?
+cor.test(empathy_data$parent_qcae_aff, empathy_data$parent_qcae_cog, use="complete.obs")
+
+#Visualize correlations between parent cognitive and affective empathy
+empathy_data %>%
+  ggplot(aes(x=parent_qcae_cog, y=parent_qcae_aff, group=country, color=country)) + 
+  geom_smooth() +
+  geom_point()+
+  scale_color_brewer(palette="Paired")+theme_minimal() +
+  xlab("Parent Cognitive Empathy") + ylab("Parent Affective Empathy") +
+  labs(colour = "Country") +
+  facet_wrap(~country) +
+  theme(plot.title = element_text(color = "grey20", size = 20, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+        axis.text.x = element_text(color = "grey20", size = 16, angle = 90, hjust = .5, vjust = .5, face = "plain"),
+        axis.text.y = element_text(color = "grey20", size = 16, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+        axis.title.x = element_text(color = "grey20", size = 20, angle = 0, hjust = .5, vjust = 0, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 20, angle = 90, hjust = .5, vjust = .5, face = "plain"))
+
+# Are parent and child reported empathy correlated?
+cor.test(empathy_data$parent_qcae_tot, empathy_data$child_qcae_tot, use="complete.obs")
+
+
+# Are parent-reported child empathy and child behavior correlated?
+cor.test(empathy_data$child_qcae_tot, empathy_data$mean_empathy, use="complete.obs")
+
+# Are parent self-reported empathy and child behavior correlated?
+cor.test(empathy_data$parent_qcae_tot, empathy_data$mean_empathy, use="complete.obs")
+
+#Visualize correlations between parent and child reported empathy
+empathy_data %>%
+  ggplot(aes(x=parent_qcae_cog, y=parent_qcae_aff)) + 
+  geom_smooth(method=lm) +
+  geom_point()+
+  scale_color_brewer(palette="Paired")+theme_minimal() +
+  xlab("Parent Cognitive Empathy") + ylab("Parent Affective Empathy") +
+  theme(plot.title = element_text(color = "grey20", size = 20, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+        axis.text.x = element_text(color = "grey20", size = 16, angle = 90, hjust = .5, vjust = .5, face = "plain"),
+        axis.text.y = element_text(color = "grey20", size = 16, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+        axis.title.x = element_text(color = "grey20", size = 20, angle = 0, hjust = .5, vjust = 0, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 20, angle = 90, hjust = .5, vjust = .5, face = "plain"))
+
+
+empathy_data %>%
+  ggplot(aes(x=parent_qcae_tot, y=child_qcae_tot)) + 
+  geom_smooth(method=lm) +
+  geom_point()+
+  scale_color_brewer(palette="Paired")+theme_minimal() +
+  xlab("Parent Total QCAE") + ylab("Child Total QCAE") +
+  labs(colour = "Country") +
   theme(plot.title = element_text(color = "grey20", size = 20, angle = 0, hjust = .5, vjust = .5, face = "plain"),
         axis.text.x = element_text(color = "grey20", size = 16, angle = 90, hjust = .5, vjust = .5, face = "plain"),
         axis.text.y = element_text(color = "grey20", size = 16, angle = 0, hjust = .5, vjust = .5, face = "plain"),
@@ -137,10 +217,13 @@ t.test(filter(empathy_data, individualism_split=="individualist")$empathy_sorry_
 
 t.test(filter(empathy_data, individualism_split=="individualist")$empathy_sorry_resp_c, filter(empathy_data, individualism_split=="collectivist")$empathy_sorry_resp_c)
 
+t.test(filter(empathy_data, individualism_split=="individualist")$mean_empathy, filter(empathy_data, individualism_split=="collectivist")$mean_empathy)
+
+
 # Visualize parent QCAE by split
 parent_summary <- reshape2::melt(empathy_data %>%
   group_by(individualism_split) %>%
-  dplyr::summarise(parent_aff = mean(qcaeparent_aff, na.rm=TRUE), parent_cog = mean(qcaeparent_cog, na.rm=TRUE), parent_tot = mean(qcaeparent_tot, na.rm=TRUE )), id.vars="individualism_split")
+  dplyr::summarise(parent_aff = mean(parent_qcae_aff, na.rm=TRUE), parent_cog = mean(parent_qcae_cog, na.rm=TRUE), parent_tot = mean(parent_qcae_tot, na.rm=TRUE )), id.vars="individualism_split")
 
 ggplot(parent_summary, aes(fill=individualism_split, y=value, x=variable)) + 
     geom_bar(position="dodge", stat="identity") +
@@ -152,7 +235,7 @@ ggplot(parent_summary, aes(fill=individualism_split, y=value, x=variable)) +
 # Visualize child QCAE by split
 child_summary <- melt(empathy_data %>%
   group_by(individualism_split) %>%
-  dplyr::summarise(child_aff = mean(qcaechild_aff, na.rm=TRUE), child_cog = mean(qcaechild_cog, na.rm=TRUE), child_tot = mean(qcaechild_tot, na.rm=TRUE)), id.vars="individualism_split")
+  dplyr::summarise(child_aff = mean(child_qcae_aff, na.rm=TRUE), child_cog = mean(child_qcae_cog, na.rm=TRUE), child_tot = mean(child_qcae_tot, na.rm=TRUE)), id.vars="individualism_split")
 
 ggplot(child_summary, aes(fill=individualism_split, y=as.numeric(value), x=variable)) + 
     geom_bar(position="dodge", stat="identity") +
@@ -171,7 +254,7 @@ behavior_summary <- melt(empathy_data %>%
 ggplot(behavior_summary, aes(fill=individualism_split, y=as.numeric(value), x=variable)) + 
     geom_bar(position="dodge", stat="identity") +
   ylim(NA, 100) +
-  scale_x_discrete(labels=c("cog_emp" = "Cognitive Empathy Score", "emp_con" = "Empathic Concern")) + 
+  scale_x_discrete(labels=c("cog_emp" = "Pain Sensitivity", "emp_con" = "Empathic Concern")) + 
   ylab("Child Score") +
   theme(axis.title.x = element_blank()) +
   labs(fill = "Cultural Split")
@@ -189,17 +272,17 @@ Interpretation: If QCAE scores are higher in high-collectivism countries, then o
 
 
 ```{r}
-t.test(filter(empathy_data, individualism_split=="individualist")$qcaeparent_cog, filter(empathy_data, individualism_split=="collectivist")$qcaeparent_cog)
+t.test(filter(empathy_data, individualism_split=="individualist")$parent_qcae_cog, filter(empathy_data, individualism_split=="collectivist")$parent_qcae_cog)
 
-t.test(filter(empathy_data, individualism_split=="individualist")$qcaeparent_aff, filter(empathy_data, individualism_split=="collectivist")$qcaeparent_aff)
+t.test(filter(empathy_data, individualism_split=="individualist")$parent_qcae_aff, filter(empathy_data, individualism_split=="collectivist")$parent_qcae_aff)
 
-t.test(filter(empathy_data, individualism_split=="individualist")$qcaeparent_tot, filter(empathy_data, individualism_split=="collectivist")$qcaeparent_tot)
+t.test(filter(empathy_data, individualism_split=="individualist")$parent_qcae_tot, filter(empathy_data, individualism_split=="collectivist")$parent_qcae_tot)
 
-t.test(filter(empathy_data, individualism_split=="individualist")$qcaechild_cog, filter(empathy_data, individualism_split=="collectivist")$qcaechild_cog)
+t.test(filter(empathy_data, individualism_split=="individualist")$child_qcae_cog, filter(empathy_data, individualism_split=="collectivist")$child_qcae_cog)
 
-t.test(filter(empathy_data, individualism_split=="individualist")$qcaechild_aff, filter(empathy_data, individualism_split=="collectivist")$qcaechild_aff)
+t.test(filter(empathy_data, individualism_split=="individualist")$child_qcae_aff, filter(empathy_data, individualism_split=="collectivist")$child_qcae_aff)
 
-t.test(filter(empathy_data, individualism_split=="individualist")$qcaechild_tot, filter(empathy_data, individualism_split=="collectivist")$qcaechild_tot)
+t.test(filter(empathy_data, individualism_split=="individualist")$child_qcae_tot, filter(empathy_data, individualism_split=="collectivist")$child_qcae_tot)
 ```
 
 # Development of Empathy
@@ -221,10 +304,16 @@ summary(sorry_years)
 sorry_months <- lm(empathy_sorry_resp_c ~ age_months, data = empathy_data)
 summary(sorry_months)
 
-ggplot(data=empathy_data, aes(x=age_months, y=empathy_pain_resp)) +
+mean_years <- lm(mean_empathy ~ age_years, data = empathy_data)
+summary(mean_years)
+mean_months <- lm(mean_empathy ~ age_months, data = empathy_data)
+summary(mean_months)
+
+
+ggplot(data=empathy_data, aes(x=age_months, y=mean_empathy)) +
   geom_point()+
   geom_smooth(method = lm) + 
-  labs(x = "Age (months)", y = "Cognitive Empathy")
+  labs(x = "Age (months)", y = "Mean Empathy Score (Behavioral)")
   
 
  ggplot(empathy_data, aes(x=as.factor(age_years), y=empathy_pain_resp)) + 
@@ -238,8 +327,8 @@ ggplot(data=empathy_data, aes(x=age_months, y=empathy_pain_resp)) +
 Dependent Variables: Empathy scores (cognitive empathy and empathic concern scores)
 Independent Variables: age_months, age_years, country, gender
 Analyses: For each type of age variable, run the following:
-1.	lm(behavior ~ age * country)
-2.	lm(behavior ~ age * country + gender)
+1.	lm(behavior ~ age * individualism)
+2.	lm(behavior ~ age * individualism + gender)
 3.	Compare these two using AIC scores
 Interpretation: If the interaction of age and country is significant, then trajectories vary by country. If model 2 has a lower AIC score, then the behavior also varies by gender.
 
@@ -273,6 +362,16 @@ summary(sorry_months_country_gender)
 AIC(sorry_months_country)
 AIC(sorry_months_country_gender) # adding gender improves fit
 
+mean_months_country <- lm(mean_empathy ~ age_months * individualism, data = empathy_data)
+summary(mean_months_country)
+mean_months_country_gender <- lm(mean_empathy ~ age_months * individualism + gender, data = empathy_data)
+summary(mean_months_country_gender)
+
+mean_years_country_gender <- lm(mean_empathy ~ age_years * individualism + gender, data = empathy_data)
+
+AIC(mean_months_country)
+AIC(mean_months_country_gender) # adding gender improves fit
+
 # Summarize and visualize best-fitting models
 
 plot_model(pain_years_country_gender, type='int') 
@@ -284,6 +383,9 @@ plot_model(sorry_years_country_gender, type='int')
 tab_model(sorry_years_country_gender, show.std = 'std')
 plot_model(sorry_months_country_gender, type='int') 
 tab_model(sorry_months_country_gender, show.std = 'std')
+
+
+plot_model(mean_years_country_gender, type='int') 
 
 # Visualization of each behavior by age, country, and gender
 
@@ -327,37 +429,44 @@ sorry_years_summary %>%
 Dependent Variables: Child behaviors (empathic concern and cognitive empathy)
 Independent Variables: Total QCAE score for parent, age in months, age in years, country
 Analyses: For each type of age variable, run the following:
-1. lm(behavior ~ age * country + QCAEparent_tot)
+1. lm(behavior ~ age * country + parent_qcae_tot)
 2.	Compare this to lm(behavior ~ age) using AIC scores
 Interpretation: If model 2 has a lower AIC score, then empathy score varies by parent QCAE.
 
 
 ``` {r, echo = TRUE}
-pain_years_country_qcae <- lm(empathy_pain_resp_c ~ age_years * country + qcaeparent_tot, data = empathy_data)
+pain_years_country_qcae <- lm(empathy_pain_resp_c ~ age_years * country + parent_qcae_tot, data = empathy_data)
 summary(pain_years_country_qcae)
 AIC(pain_years_country) 
 AIC(pain_years_country_qcae) # adding qcae improves fit
 
-pain_months_country_qcae <- lm(empathy_pain_resp_c ~ age_months * country + qcaeparent_tot, data = empathy_data)
+pain_months_country_qcae <- lm(empathy_pain_resp_c ~ age_months * country + parent_qcae_tot, data = empathy_data)
 summary(pain_months_country_qcae)
 AIC(pain_months_country)
 AIC(pain_months_country_qcae) # adding qcae improves fit
 
-sorry_years_country_qcae <- lm(empathy_sorry_resp_c ~ age_years * country + qcaeparent_tot, data = empathy_data)
+sorry_years_country_qcae <- lm(empathy_sorry_resp_c ~ age_years * country + parent_qcae_tot, data = empathy_data)
 summary(sorry_years_country_qcae)
 AIC(sorry_years_country)
 AIC(sorry_years_country_qcae) # adding qcae improves fit
 
-sorry_months_country_qcae <- lm(empathy_sorry_resp_c ~ age_months * country + qcaeparent_tot, data = empathy_data)
+sorry_months_country_qcae <- lm(empathy_sorry_resp_c ~ age_months * country + parent_qcae_tot, data = empathy_data)
 summary(sorry_months_country_qcae)
 AIC(sorry_months_country)
 AIC(sorry_months_country_qcae) # adding qcae improves fit
 
+mean_months_country_qcae <- lm(mean_empathy ~ age_months * individualism + parent_qcae_tot, data = empathy_data)
+summary(mean_months_country_qcae)
+AIC(mean_months_country)
+AIC(mean_months_country_qcae) # adding qcae improves fit
 
-pain_years_country_qcae_summary <- data_summary(empathy_data, varname="empathy_pain_resp", groupnames=c("country", "age_years", "qcaeparent_tot"))
+mean_years_country_qcae <- lm(mean_empathy ~ age_years * individualism + parent_qcae_tot, data = empathy_data)
+
+
+pain_years_country_qcae_summary <- data_summary(empathy_data, varname="empathy_pain_resp", groupnames=c("country", "age_years", "parent_qcae_tot"))
 
 pain_years_country_qcae_summary %>%
-  ggplot(aes(x=qcaeparent_tot, y=empathy_pain_resp, group=as.factor(age_years), color=as.factor(age_years))) + 
+  ggplot(aes(x=parent_qcae_tot, y=empathy_pain_resp, group=as.factor(age_years), color=as.factor(age_years))) + 
   geom_point()+
   geom_smooth(method = lm) +
   scale_color_brewer(palette="Paired")+theme_minimal() +
@@ -384,6 +493,8 @@ plot_model(sorry_years_country_qcae, type='int')
 tab_model(sorry_years_country_qcae, show.std = 'std')
 plot_model(sorry_months_country_qcae, type='int') 
 tab_model(sorry_months_country_qcae, show.std = 'std')
+
+plot_model(mean_years_country_qcae, type = 'int')
 ```
 
 #### Parent-Child Empathy Transmission
@@ -393,13 +504,13 @@ Independent Variables: Hofstede collectivism score, parent total QCAE score
 Analyses: For each country-behavior combination, run the following
 1. lm(behavior ~ individualism)
 * If b1 is significant, then there is a relationship between the parent’s self-reported empathy and the child’s behavior, which the country’s cultural environment may mediate
-2. lm(QCAEparent_tot ~ individualism)
+2. lm(parent_qcae_tot ~ individualism)
 * If b2 is not significant, then the country’s QCAE is just a third variable which may or may not be associated with the behavior
-3. lm(behavior ~ individualism + QCAEparent_tot)
+3. lm(behavior ~ individualism + parent_qcae_tot)
 * If b3 (QCAE) is significant and b4 (individualism) is not significant or smaller than before, then there is a mediation effect of culture on the relationship between parent empathy and child behavior.
-4. mediate(lm(QCAEparent_tot ~ individualism, empathy_data), lm(behavior ~ individualism + QCAEparent_tot, empathy_data), treat=individualism, mediator= QCAEparent_tpt, boot=TRUE, sims=100)
+4. mediate(lm(parent_qcae_tot ~ individualism, empathy_data), lm(behavior ~ individualism + parent_qcae_tot, empathy_data), treat=individualism, mediator= parent_qcae_tpt, boot=TRUE, sims=100)
 * If the ACME score is significant, then the mediation effect is significant
-5. lavaan(lm(behavior ~ individualism, empathy_data), lm(behavior ~ individualism + QCAEparent_tot, empathy_data), treat=individualism, mediator= QCAEparent_tpt, boot=TRUE, sims=100)
+5. lavaan(lm(behavior ~ individualism, empathy_data), lm(behavior ~ individualism + parent_qcae_tot, empathy_data), treat=individualism, mediator= parent_qcae_tpt, boot=TRUE, sims=100)
 * Look for significant a, b, and ab effects
 
 Interpretation: If there is a significant mediation effect of cultural individualism on the relationship between parent empathy and child behavior, then there are cross-cultural differences in transmission of empathy from parent to child
@@ -412,24 +523,24 @@ summary(pain_individualism) # b1 is significant, so there is a relationship betw
 sorry_individualism <- lm(empathy_sorry_resp_c ~ individualism, data = filter(empathy_data, !is.na(empathy_pain_resp_c)))
 summary(sorry_individualism) # b1 is significant, so there is a relationship between the parent’s self-reported empathy and the child’s behavior
 
-qcae_individualism <- lm(qcaeparent_tot ~ individualism, data = filter(empathy_data, !is.na(empathy_pain_resp_c)))
+qcae_individualism <- lm(parent_qcae_tot ~ individualism, data = filter(empathy_data, !is.na(empathy_pain_resp_c)))
 summary(qcae_individualism) # b2 is significant
 
-pain_qcae_individualism <- lm(empathy_pain_resp_c ~ individualism + qcaeparent_tot, data = filter(empathy_data, !is.na(empathy_pain_resp_c)))
+pain_qcae_individualism <- lm(empathy_pain_resp_c ~ individualism + parent_qcae_tot, data = filter(empathy_data, !is.na(empathy_pain_resp_c)))
 summary(pain_qcae_individualism) # b4 (individualism) is not insignificant or smaller than before, so mediation is unlikely
-sorry_qcae_individualism <- lm(empathy_sorry_resp_c ~ individualism + qcaeparent_tot, data = filter(empathy_data, !is.na(empathy_pain_resp_c)))
+sorry_qcae_individualism <- lm(empathy_sorry_resp_c ~ individualism + parent_qcae_tot, data = filter(empathy_data, !is.na(empathy_pain_resp_c)))
 summary(sorry_qcae_individualism) # b4 (individualism) is not insignificant or smaller than before, so mediation is unlikely
 
 
 ## Mediation using "mediation" package
-model.M_pain <- lm(qcaeparent_tot ~ individualism, filter(empathy_data, !is.na(empathy_pain_resp_c)))
-model.Y_pain <- lm(empathy_pain_resp ~ individualism + qcaeparent_tot, filter(empathy_data, !is.na(empathy_pain_resp_c)))
-results_pain <- mediate(model.M_pain, model.Y_pain, treat='individualism', mediator='qcaeparent_tot',
+model.M_pain <- lm(parent_qcae_tot ~ individualism, filter(empathy_data, !is.na(empathy_pain_resp_c)))
+model.Y_pain <- lm(empathy_pain_resp ~ individualism + parent_qcae_tot, filter(empathy_data, !is.na(empathy_pain_resp_c)))
+results_pain <- mediate(model.M_pain, model.Y_pain, treat='individualism', mediator='parent_qcae_tot',
                    boot=TRUE, sims=100)
 summary(results_pain)
-model.M_sorry <- lm(qcaeparent_tot ~ individualism, filter(empathy_data, !is.na(empathy_sorry_resp_c)))
-model.Y_sorry <- lm(empathy_sorry_resp ~ individualism + qcaeparent_tot, filter(empathy_data, !is.na(empathy_sorry_resp_c)))
-results_sorry <- mediate(model.M_sorry, model.Y_sorry, treat='individualism', mediator='qcaeparent_tot',
+model.M_sorry <- lm(parent_qcae_tot ~ individualism, filter(empathy_data, !is.na(empathy_sorry_resp_c)))
+model.Y_sorry <- lm(empathy_sorry_resp ~ individualism + parent_qcae_tot, filter(empathy_data, !is.na(empathy_sorry_resp_c)))
+results_sorry <- mediate(model.M_sorry, model.Y_sorry, treat='individualism', mediator='parent_qcae_tot',
                    boot=TRUE, sims=100)
 summary(results_sorry)
 
@@ -437,87 +548,39 @@ summary(results_sorry)
 
 ## Mediation using "lavaan" package
 
-pain_data <- filter(data.frame(X = empathy_data$individualism, Y = empathy_data$empathy_pain_resp_c, M = empathy_data$qcaeparent_tot), !is.na(Y))
-
-pain_fit <- lavaan::sem(pain_model, data = pain_data)
-parameterestimates(pain_fit,  standardized=TRUE) %>% 
-  knitr::kable()
-sorry_data <- filter(data.frame(X = empathy_data$individualism, Y = empathy_data$empathy_sorry_resp_c, M = empathy_data$qcaeparent_tot), !is.na(Y))
-sorry_model <- ' # direct effect
-             Y ~ c*X
-           # mediator
-             M ~ a*X
-             Y ~ b*M
-           # indirect effect (a*b)
-             ab := a*b
-           # total effect
-             total := c + (a*b)
-         '
-sorry_fit <- sem(sorry_model, data = sorry_data)
-parameterestimates(sorry_fit,  standardized=TRUE) %>% 
-  knitr::kable()
-
-
-pain_model <- ' # direct effect
-             Y ~ c*X
-           # mediator
-             M ~ a*X
-             Y ~ b*M
-           # indirect effect (a*b)
-             ab := a*b
-           # total effect
-             total := c + (a*b)
-         '
-
-
-
-# Attempting Elizabeth's method
-mediation_data <- filter(empathy_data, !is.na(empathy_pain_resp_c))
-
-med_WB6 = "individualism  ~ a1*qcaeparent_tot
-empathy_pain_resp_c ~ b1*individualism + c*qcaeparent_tot
-
+empathy_eh = 'parent_qcae_tot  ~ a1*individualism
+mean_empathy_c ~ b1*parent_qcae_tot + c*individualism
 indirect1 := a1*b1
 direct := c
 total := c + (a1*b1) 
+'
 
-"
+mediation_data <- empathy_data %>% 
+  dplyr::select(individualism, mean_empathy_c, parent_qcae_tot) %>%
+  filter(!is.na(mean_empathy_c))
 
-fit_med_WB6 = lavaan:sem(med_WB6, se = "boot", bootstrap = 1000, data = mediation_data, 
+empathy_fit <- lavaan::sem(empathy_eh, se = "boot", bootstrap = 1000, data = mediation_data, 
                   likelihood = "wishart")
-summary(fit_med_WB6, standardized = T, rsq = T)
-parameterEstimates(fit_med_WB6)
-
-# Attempting Elizabeth's method
-mediation_data <- filter(empathy_data, !is.na(empathy_pain_resp_c))
-
-med_WB6 = "individualism  ~ a1*qcaeparent_tot
-empathy_pain_resp_c ~ b1*individualism + c*qcaeparent_tot
-
-indirect1 := a1*b1
-direct := c
-total := c + (a1*b1) 
-
-"
-##EH notes - this is flipped, you want,
-empathy_eh = "qcaeparent_tot  ~ a1*individualism
-empathy_pain_resp_c ~ b1*qcaeparent_tot + c*qindividualism
-
-indirect1 := a1*b1
-direct := c
-total := c + (a1*b1) 
-
-"
 
 
-fit_med_WB6 = lavaan::sem(med_WB6, se = "boot", bootstrap = 1000, data = mediation_data, 
-                  likelihood = "wishart")
-summary(fit_med_WB6, standardized = T, rsq = T)
-parameterEstimates(fit_med_WB6)
 
+lavaan::parameterEstimates(pain_fit,  standardized=TRUE) %>% 
+  knitr::kable()
 
 ```
 
+# EH notes on correlations
 
+```{r}
+#correlation 
+cor.test(empathy_data$empathy_pain_resp_c, empathy_data$parent_qcae_tot)
+#correlation
+cor.test(empathy_data$empathy_sorry_resp_c, empathy_data$parent_qcae_tot)
+#negative correlations for both
+
+cor.test(empathy_data$empathy_pain_resp_c, empathy_data$child_qcae_tot)
+#negative
+
+```
 
 
