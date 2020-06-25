@@ -32,6 +32,7 @@ extract_gender.Rmd compiles gender information from the following files. All fil
 extract.gender.Rmd writes the results into a file called "templeton_gender_compilation.csv".
 - Dropbox/CCMD Merge Data/Countries/Canada/Excel/Master_CA.xlsx
 - Dropbox/CCMD Merge Data/Countries/China/Excel files/CCMD_China_2013+2014.xlsx
+- Colombia - All Questionnaires_June 25, 2020_10.29.csv (raw output from "Colombia - All Questionnaires" Qualtrics survey)
 - Dropbox/CCMD Merge Data/Countries/Jordan/Excel/Master_ Jordan.xls
 - Dropbox/CCMD Merge Data/Countries/South Africa/Excel/Mastersheet South Africa.xls
 - Dropbox/CCMD Merge Data/Countries/Turkey/SPSS/Agg/Master_TK.sav
@@ -40,6 +41,8 @@ In the case that genders could not be found in these files, they were taken from
 
 combine_data.Rmd combines the following documents and writes them into a file called "templeton_clean_data.csv":
 - CCMD Merge Data/MasterSheets/PrimaryCountries_Years1&2_2.sav (converted to csv format)
+- CCMD Merge Data/NEW Mastersheets and Consolidations/Colombia_Master_MAY.sav (converted to csv format)
+- CCMD Merge Data/Countries/Colombia/Excel/dictator_colombia_merge.xlsx (converted to csv format)
 - templeton_qcae_calculations.csv (created by calculate_QCAE.Rmd)
 - templeton_age_calculations.csv (created by calculate_age.Rmd)
 - templeton_gender_compilation.csv (created by extract_gender.Rmd)
