@@ -7,6 +7,7 @@ output: html_document
 
 Prepare workspace and read in files
 ```{r}
+
 # install.packages("here", "tidyverse")
 require("here")
 require("tidyverse")
@@ -17,16 +18,29 @@ age_data <- as_tibble(read.csv(here("templeton_age_calculations.csv")))
 gender_data <- as_tibble(read.csv(here("templeton_gender_compilation.csv")))
 qcae_data <- as_tibble(read.csv(here("templeton_qcae_calculations.csv")))
 task_data <- as_tibble(read.csv(here("PrimaryCountries_Years1&2_2.csv")))
+colombia_empathy_data <- as_tibble(read.csv("Colombia_Master_MAY.csv"))
+colombia_altruism_data <- as_tibble(read.csv("dictator_colombia_merge.csv"))
 ```
 
 Clean task data
 ```{r}
-clean_task_data <- task_data %>% select(Subject, �..Country, Empathy_Pain_RESP, Empathy_Sorry_RESP)
-clean_task_data <- clean_task_data %>% mutate(country = recode( �..Country, `1`="usa",`2`="canada", `3` = "south_africa", `4` = "turkey", `5` ="china", `6` = "kyrgyzstan", `7` = "jordan"))
+colombia_altruism_data <- colombia_altruism_data %>% mutate(unique_id = paste0("columbia_", Subject)) %>%
+  select(unique_id, share.RESP) %>%
+  rename (dictator_shared = share.RESP)
+colombia_empathy_data <- colombia_empathy_data %>% select(ï..Subject, Empathy_Pain_RESP, Empathy_Sorry_RESP) %>%
+  mutate(unique_id = paste0("columbia_", ï..Subject)) %>%
+  select (-ï..Subject)
+clean_colombia_task_data <- full_join(colombia_altruism_data, colombia_empathy_data, by = "unique_id") %>%
+  mutate(country = "colombia")
+clean_task_data <- task_data %>% select(Subject, ï..Country, Empathy_Pain_RESP, Empathy_Sorry_RESP, Dictator_Shared)
+clean_task_data <- clean_task_data %>% mutate(country = recode( ï..Country, `1`="usa",`2`="canada", `3` = "south_africa", `4` = "turkey", `5` ="china", `6` = "kyrgyzstan", `7` = "jordan"))
 clean_task_data <- clean_task_data %>% mutate(unique_id = paste0(country, "_", Subject))
-clean_task_data <- clean_task_data %>% select(-�..Country, -Subject)
+clean_task_data <- clean_task_data %>% select(-ï..Country, -Subject)
 colnames(clean_task_data) <- tolower(colnames(clean_task_data))
+colnames(clean_colombia_task_data) <- tolower(colnames(clean_colombia_task_data))
 clean_task_data <- distinct(clean_task_data)
+clean_task_data <- rbind(clean_task_data, distinct(clean_colombia_task_data))
+
 
 # Remove empty duplicate entries from task data
 clean_task_data <- clean_task_data %>% filter(!(is.na(empathy_pain_resp) & (unique_id == "usa_242" | unique_id == "south_africa_2004" | unique_id == "south_africa_2069" | unique_id == "south_africa_2108" | unique_id == "south_africa_2116" | unique_id == "china_3092")))
