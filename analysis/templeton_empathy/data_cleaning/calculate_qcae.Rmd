@@ -1,7 +1,7 @@
 ---
 title: "Calculate QCAE"
 author: "Violet Kozloff"
-date: "July 7, 2020"
+date: "July 9, 2020"
 output: html_document
 ---
 
@@ -495,50 +495,41 @@ clean_turkey_data <- clean_turkey_data %>% rename_all(funs(str_replace(., "m_emp
 clean_turkey_data <- clean_turkey_data %>% rename (unique_id = ï..id_no)
 clean_turkey_data$unique_id <- str_c("turkey_", clean_turkey_data$unique_id)
 
-# Reverse code (assuming that raw data was not reverse coded and that each number in the raw data aligned with a likert scale value)
-clean_turkey_data <- clean_turkey_data %>% mutate(child_qcae_1=5-child_qcae_1)
-clean_turkey_data <- clean_turkey_data %>% mutate(child_qcae_2=5-child_qcae_2)
-clean_turkey_data <- clean_turkey_data %>% mutate(child_qcae_17=5-child_qcae_17)
-clean_turkey_data <- clean_turkey_data %>% mutate(child_qcae_29=5-child_qcae_29)
-clean_turkey_data <- clean_turkey_data %>% mutate(parent_qcae_1=5-parent_qcae_1)
-clean_turkey_data <- clean_turkey_data %>% mutate(parent_qcae_2=5-parent_qcae_2)
-clean_turkey_data <- clean_turkey_data %>% mutate(parent_qcae_17=5-parent_qcae_17)
-clean_turkey_data <- clean_turkey_data %>% mutate(parent_qcae_29=5-parent_qcae_29)
+# Correct coding (in raw data, 1= "strongly agree" and 4 = "strongly disagree")
+clean_turkey_data <- clean_turkey_data %>%
+  mutate_at(vars(-unique_id, -child_qcae_1, -child_qcae_2, -child_qcae_17, -child_qcae_29, -parent_qcae_1, -parent_qcae_2, -parent_qcae_17, -parent_qcae_29), ~(5-.))
 
 # Calculate subscales
 clean_turkey_data <- clean_turkey_data %>% mutate(child_qcae_pt = as.numeric(child_qcae_15) + as.numeric(child_qcae_16) +as.numeric(child_qcae_19) +
                                                     as.numeric(child_qcae_20) +as.numeric(child_qcae_21) +as.numeric(child_qcae_22) +as.numeric(child_qcae_24) +
-                                                    as.numeric(child_qcae_25) + as.numeric(child_qcae_26) +as.numeric(child_qcae_27))
-clean_turkey_data <- clean_turkey_data %>% mutate(child_qcae_os = as.numeric(child_qcae_1) +
+                                                    as.numeric(child_qcae_25) + as.numeric(child_qcae_26) +as.numeric(child_qcae_27)) %>%
+  mutate(child_qcae_os = as.numeric(child_qcae_1) +
                                                     as.numeric(child_qcae_3) +as.numeric(child_qcae_4) +as.numeric(child_qcae_5) +
                                                     as.numeric(child_qcae_6) +as.numeric(child_qcae_18) +as.numeric(child_qcae_28) +as.numeric(child_qcae_30) +
-                                                    as.numeric(child_qcae_31))
-clean_turkey_data <- clean_turkey_data %>% mutate(child_qcae_cog = child_qcae_os + child_qcae_pt)
-
-clean_turkey_data <- clean_turkey_data %>% mutate(child_qcae_ec = as.numeric(child_qcae_8) + as.numeric(child_qcae_9) +as.numeric(child_qcae_13) +
-                                                    as.numeric(child_qcae_14))
-clean_turkey_data <- clean_turkey_data %>% mutate(child_qcae_prox_r = as.numeric(child_qcae_7) + as.numeric(child_qcae_10) +as.numeric(child_qcae_12) +
-                                                    as.numeric(child_qcae_23))
-clean_turkey_data <- clean_turkey_data %>% mutate(child_qcae_periph_r = as.numeric(child_qcae_2) + as.numeric(child_qcae_11) +as.numeric(child_qcae_17) +
-                                                    as.numeric(child_qcae_29))
-clean_turkey_data <- clean_turkey_data %>% mutate(child_qcae_aff = child_qcae_ec + child_qcae_prox_r + child_qcae_periph_r)
-clean_turkey_data <- clean_turkey_data %>% mutate(child_qcae_tot = child_qcae_aff+child_qcae_cog)
-clean_turkey_data <- clean_turkey_data %>% mutate(parent_qcae_pt = as.numeric(parent_qcae_15) + as.numeric(parent_qcae_16) +as.numeric(parent_qcae_19) +
+                                                    as.numeric(child_qcae_31)) %>% 
+  mutate(child_qcae_cog = child_qcae_os + child_qcae_pt)%>%
+  mutate(child_qcae_ec = as.numeric(child_qcae_8) + as.numeric(child_qcae_9) +as.numeric(child_qcae_13) +
+                                                    as.numeric(child_qcae_14)) %>% mutate(child_qcae_prox_r = as.numeric(child_qcae_7) + as.numeric(child_qcae_10) +as.numeric(child_qcae_12) +
+                                                    as.numeric(child_qcae_23)) %>% 
+  mutate(child_qcae_periph_r = as.numeric(child_qcae_2) + as.numeric(child_qcae_11) +as.numeric(child_qcae_17) +
+                                                    as.numeric(child_qcae_29))%>% 
+  mutate(child_qcae_aff = child_qcae_ec + child_qcae_prox_r + child_qcae_periph_r) %>% mutate(child_qcae_tot = child_qcae_aff+child_qcae_cog) %>% 
+  mutate(parent_qcae_pt = as.numeric(parent_qcae_15) + as.numeric(parent_qcae_16) +as.numeric(parent_qcae_19) +
                                                     as.numeric(parent_qcae_20) +as.numeric(parent_qcae_21) +as.numeric(parent_qcae_22) +as.numeric(parent_qcae_24) +
-                                                    as.numeric(parent_qcae_25) + as.numeric(parent_qcae_26) +as.numeric(parent_qcae_27))
-clean_turkey_data <- clean_turkey_data %>% mutate(parent_qcae_os = as.numeric(parent_qcae_1) +
+                                                    as.numeric(parent_qcae_25) + as.numeric(parent_qcae_26) +as.numeric(parent_qcae_27)) %>% 
+  mutate(parent_qcae_os = as.numeric(parent_qcae_1) +
                                                     as.numeric(parent_qcae_3) +as.numeric(parent_qcae_4) +as.numeric(parent_qcae_5) +
                                                     as.numeric(parent_qcae_6) +as.numeric(parent_qcae_18) +as.numeric(parent_qcae_28) +as.numeric(parent_qcae_30) +
-                                                    as.numeric(parent_qcae_31))
-clean_turkey_data <- clean_turkey_data %>% mutate(parent_qcae_cog = parent_qcae_os + parent_qcae_pt)
-clean_turkey_data <- clean_turkey_data %>% mutate(parent_qcae_ec = as.numeric(parent_qcae_8) + as.numeric(parent_qcae_9) +as.numeric(parent_qcae_13) +
-                                                    as.numeric(parent_qcae_14))
-clean_turkey_data <- clean_turkey_data %>% mutate(parent_qcae_prox_r = as.numeric(parent_qcae_7) + as.numeric(parent_qcae_10) +as.numeric(parent_qcae_12) +
-                                                    as.numeric(parent_qcae_23))
-clean_turkey_data <- clean_turkey_data %>% mutate(parent_qcae_periph_r = as.numeric(parent_qcae_2) + as.numeric(parent_qcae_11) +as.numeric(parent_qcae_17) +
-                                                    as.numeric(parent_qcae_29))
-clean_turkey_data <- clean_turkey_data %>% mutate(parent_qcae_aff = parent_qcae_ec + parent_qcae_prox_r + parent_qcae_periph_r)
-clean_turkey_data <- clean_turkey_data %>% mutate(parent_qcae_tot = parent_qcae_aff+parent_qcae_cog)
+                                                    as.numeric(parent_qcae_31))%>% 
+  mutate(parent_qcae_cog = parent_qcae_os + parent_qcae_pt) %>% 
+  mutate(parent_qcae_ec = as.numeric(parent_qcae_8) + as.numeric(parent_qcae_9) +as.numeric(parent_qcae_13) +
+                                                    as.numeric(parent_qcae_14)) %>% 
+  mutate(parent_qcae_prox_r = as.numeric(parent_qcae_7) + as.numeric(parent_qcae_10) +as.numeric(parent_qcae_12) +
+                                                    as.numeric(parent_qcae_23)) %>% 
+  mutate(parent_qcae_periph_r = as.numeric(parent_qcae_2) + as.numeric(parent_qcae_11) +as.numeric(parent_qcae_17) +
+                                                    as.numeric(parent_qcae_29)) %>% 
+  mutate(parent_qcae_aff = parent_qcae_ec + parent_qcae_prox_r + parent_qcae_periph_r)%>% 
+  mutate(parent_qcae_tot = parent_qcae_aff+parent_qcae_cog)
 
 clean_turkey_data <- clean_turkey_data %>% select (unique_id, child_qcae_os, child_qcae_pt, child_qcae_cog, child_qcae_ec, child_qcae_prox_r, child_qcae_periph_r, child_qcae_aff, child_qcae_tot,
                                                    parent_qcae_os, parent_qcae_pt, parent_qcae_cog, parent_qcae_ec, parent_qcae_prox_r, parent_qcae_periph_r, parent_qcae_aff, parent_qcae_tot)
