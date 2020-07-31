@@ -78,10 +78,15 @@ empathy_data %>%
   group_by(age_years, country, gender) %>%
   dplyr::summarise(n = n())
 
-# Find mean and SD of age by country
+# Find altruism by age
 empathy_data %>%
-  group_by(country) %>%
-  dplyr::summarise(mean_age = mean(age_months, na.rm= TRUE)/12, sd_age = sd(age_months)/12)
+  group_by(age_months) %>%
+  dplyr::summarise(n = n(), altruism = mean(dictator_shared, na.rm = TRUE))
+
+# Find altruism by maternal education
+empathy_data %>%
+  group_by(maternal_edu) %>%
+  dplyr::summarise(n = n(), altruism = mean(dictator_shared, na.rm = TRUE))
 
 ```
 
@@ -207,7 +212,7 @@ summary(cqcae_years_individualism_gender_pqcae_edu)
 ```
 
 
-#### Exploratory analyses of altruism and parent QCAE
+#### Altruism and parent QCAE
 
 # Parent QCAE score by culture
 Dependent Variables: Parent QCAE score
@@ -218,87 +223,42 @@ Interpretation: If there is a significant negative main effect of Hofstede score
 pqcae_culture <- lm(parent_qcae_tot ~ individualism, data = empathy_data)
 ```
 
-# Altruism by gender, age, SES
-Dependent Variables: Altruism (stickers shared)
-Independent Variables: Age in years (confirm that holds true by age in months), gender, maternal education
-Analyses: ANCOVA
-Interpretation: If there is a significant main effect of an IV on altruism, then altruism varies by that IV
-
-``` {r, echo = TRUE}
-# ANCOVA with age in years
-dictator_months_gender_edu <- aov(dictator_shared_c ~ gender * age_months * maternal_edu, data = empathy_data)
-summary(dictator_months_gender_edu)
-etaSquared(dictator_months_gender_edu)
-
-# Check against ANCOVA with age in years
-dictator_years_gender_edu <- aov(dictator_shared_c ~ gender * age_years * maternal_edu, data = empathy_data)
-summary(dictator_years_gender_edu)
-etaSquared(dictator_years_gender_edu)
-
-```
-# Parent QCAE score by culture
-Dependent Variables: Parent QCAE score
-Independent Variables: Hofstede score
-Analyses: Regression predicting parent QCAE score
-Interpretation: If there is a significant negative main effect of Hofstede score, then parents in more collectivist countries have greater empathic disposition
-
-``` {r, echo = TRUE}
-pqcae_culture <- lm(parent_qcae_tot ~ individualism, data = empathy_data)
-summary(pqcae_culture)
-```
-
-
-# Altruism by maternal education
-Dependent Variables: Stickers shared
-Independent Variables: Maternal education
-Analyses: Regression predicting altruism
-Interpretation: If there is a positive main effect of maternal education, then children with more educated mothers share more
-
-``` {r, echo = TRUE}
-dictator_edu <- lm(dictator_shared ~ maternal_edu, data = empathy_data)
-summary(dictator_edu)
-```
-
-# Altruism by parent QCAE
-Dependent Variables: Stickers shared
-Independent Variables: Parent QCAE (total)
-Analyses: Regression predicting altruism
-Interpretation: If there is a positive main effect of parent QCAE, then children with mothers with higher empathic dispositions share more
-
-``` {r, echo = TRUE}
-dictator_pqcae <- lm(dictator_shared ~ parent_qcae_tot, data = empathy_data)
-summary(dictator_pqcae)
-```
-
-
-
-#### Parent-Child Empathy Transmission: Mediation
-# Hypothesis: Self-reported parent empathic disposition will mediate the country effect on empathy score
-Dependent Variables: Empathy score (composite)
-Independent Variables: Hofstede collectivism score, parent total QCAE score
-Analyses: Mediation of parent empathic disposition on child empathy behavior by Hofstede score
-Interpretation: If there is a significant mediation effect of cultural individualism on the relationship between parent empathic disposition and child behavior, then there are cross-cultural differences in transmission of empathy from parent to child
+# Development of Altruism
+####	Hypothesis: Altruism will increase with age and cultural individualism. Girls will show greater Altruism. Children whose parents have higher QCAE scores will show greater Altruism.
+Dependent Variables: Altruism (stickers shared in the dictator game)
+Independent Variables: Age in months (double-check the same effect in a separate model with age in years), Hofstede I/C score (in an interaction with age), child gender, child empathy (pain task score), parent total QCAE, maternal education
+Analyses: Series of linear regressions predicting each behavior with predictors added in consecutive blocks
+Interpretation: If there is a significant main effect of a given predictor on each behavior, then altruism varies by that predictor
 
 ``` {r, echo = TRUE}
 
-## Mediation using "lavaan" package
+# Altruism by age in months
+dictator_months <- lm(dictator_shared_c ~ age_months, data = empathy_data)
+summary(dictator_months)
+# Altruism by age in months and I/C score
+dictator_months_individualism <- lm(dictator_shared_c ~ age_months*individualism, data = empathy_data)
+summary(dictator_months_individualism)
+# Altruism by age in months, I/C score, gender, and empathy
+dictator_months_individualism_gender_empathy <- lm(dictator_shared_c ~ age_months*individualism + gender + mean_empathy_c, data = empathy_data)
+summary(dictator_months_individualism_gender_empathy)
+# Altruism by age in months, I/C score, gender, empathy, parent QCAE, and maternal education
+dictator_months_individualism_gender_empathy_pqcae_edu <- lm(dictator_shared_c ~ age_months*individualism + gender + mean_empathy_c +parent_qcae_tot + maternal_edu, data = empathy_data)
+summary(dictator_months_individualism_gender_empathy_pqcae_edu)
 
-empathy_mediation = 'parent_qcae_tot  ~ a1*individualism
-mean_empathy_c ~ b1*parent_qcae_tot + c*individualism
-indirect1 := a1*b1
-direct := c
-total := c + (a1*b1) 
-'
-
-mediation_data <- empathy_data %>% 
-  dplyr::select(individualism, mean_empathy_c, parent_qcae_tot) %>%
-  filter(!is.na(mean_empathy_c))
-
-empathy_fit <- lavaan::sem(empathy_mediation, se = "boot", bootstrap = 1000, data = mediation_data, 
-                  likelihood = "wishart")
-
-lavaan::parameterEstimates(empathy_fit,  standardized=TRUE) %>% 
-  knitr::kable()
+# Check the same models using age in years
+# Altruism by age in years
+dictator_years <- lm(dictator_shared_c ~ age_years, data = empathy_data)
+summary(dictator_years)
+# Altruism by age in years and I/C score
+dictator_years_individualism <- lm(dictator_shared_c ~ age_years*individualism, data = empathy_data)
+summary(dictator_years_individualism)
+# Altruism by age in years, I/C score, gender and empathy
+dictator_years_individualism_gender <- lm(dictator_shared_c ~ age_years*individualism + gender, data = empathy_data)
+summary(dictator_years_individualism_gender)
+# Altruism by age in years, I/C score, gender, empathy, parent QCAE, and maternal education
+dictator_years_individualism_gender_empathy_pqcae_edu <- lm(dictator_shared_c ~ age_years*individualism + gender + mean_empathy_c + parent_qcae_tot + maternal_edu, data = empathy_data)
+summary(dictator_years_individualism_gender_empathy_pqcae_edu)
 
 ```
+
 
